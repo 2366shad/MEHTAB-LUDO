@@ -155,7 +155,7 @@ public class MainActivity extends Activity {
             float cy = 7.5f * cell;
             float d = cell * .34f;
             float r = cell * .095f;
-            float[][] dots = {
+            int[][][] dots = {
                 {},
                 {{0,0}},
                 {{-1, -1},{1, 1}},
@@ -165,7 +165,7 @@ public class MainActivity extends Activity {
                 {{-1,-1},{1,-1},{-1,0},{1,0},{-1,1},{1,1}}
             };
             p.setColor(Color.WHITE);
-            for (float[] dot : dots[value]) {
+            for (int[] dot : dots[value]) {
                 c.drawCircle(cx + dot[0] * d, cy + dot[1] * d, r, p);
             }
         }
