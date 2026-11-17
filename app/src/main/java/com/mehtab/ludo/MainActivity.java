@@ -40,6 +40,8 @@ public class MainActivity extends Activity {
 
         int turn = turnOrder[0]; // Green starts
         int dice = 0;
+        int displayDice = 1;
+        boolean rollingAnimation = false;
         boolean rolled = false;
         boolean gameOver = false;
         int winner = -1;
@@ -118,6 +120,7 @@ public class MainActivity extends Activity {
             drawTrack(c);
             drawHome(c);
             drawTokens(c);
+            drawCenterCrown(c);
 
             // Four player dice sit beside their matching board quadrants.
             // Only the current player's dice is highlighted and tappable.
@@ -155,8 +158,8 @@ public class MainActivity extends Activity {
                         cx+half*.78f, cy+half*.78f),
                         cell * .13f, cell * .13f, p);
 
-                if (active && rolled) {
-                    drawDiceFace(c, dice, cx, cy);
+                if (active && dice > 0) {
+                    drawDiceFace(c, rollingAnimation ? displayDice : dice, cx, cy);
                 } else {
                     p.setColor(active ? colors[player] : Color.GRAY);
                     p.setTextAlign(Paint.Align.CENTER);
@@ -327,6 +330,31 @@ public class MainActivity extends Activity {
             c.drawPath(triangle, p);
         }
 
+
+        void drawCenterCrown(Canvas c) {
+            float cx = 7.5f * cell, cy = 7.5f * cell;
+            Path crown = new Path();
+            crown.moveTo(cx - cell*.48f, cy - cell*.08f);
+            crown.lineTo(cx - cell*.38f, cy + cell*.30f);
+            crown.lineTo(cx + cell*.38f, cy + cell*.30f);
+            crown.lineTo(cx + cell*.48f, cy - cell*.08f);
+            crown.lineTo(cx + cell*.20f, cy + cell*.05f);
+            crown.lineTo(cx, cy - cell*.30f);
+            crown.lineTo(cx - cell*.20f, cy + cell*.05f);
+            crown.close();
+            p.setColor(Color.rgb(255, 190, 25));
+            p.setStyle(Paint.Style.FILL);
+            c.drawPath(crown, p);
+            p.setColor(Color.rgb(130, 75, 5));
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(cell*.035f);
+            c.drawPath(crown, p);
+            p.setStyle(Paint.Style.FILL);
+            circle(c, Color.WHITE, cx-cell*.23f, cy-cell*.10f, cell*.045f);
+            circle(c, Color.WHITE, cx, cy-cell*.22f, cell*.045f);
+            circle(c, Color.WHITE, cx+cell*.23f, cy-cell*.10f, cell*.045f);
+        }
+
         void drawWinnerOverlay(Canvas c, float size) {
             p.setColor(Color.argb(205, 255, 255, 255));
             c.drawRoundRect(new RectF(cell * 2.0f, cell * 6.25f,
@@ -350,6 +378,8 @@ public class MainActivity extends Activity {
             }
             turn = turnOrder[0];
             dice = 0;
+            displayDice = 1;
+            rollingAnimation = false;
             rolled = false;
             gameOver = false;
             winner = -1;
@@ -510,29 +540,48 @@ public class MainActivity extends Activity {
             }
             turn = turnOrder[(orderIndex + 1) % turnOrder.length];
             dice = 0;
+            displayDice = 1;
+            rollingAnimation = false;
             rolled = false;
         }
 
         void rollDice() {
-            if (gameOver || rolled) return;
+            if (gameOver || rolled || rollingAnimation) return;
 
             dice = random.nextInt(6) + 1;
+            displayDice = random.nextInt(6) + 1;
             rolled = true;
+            rollingAnimation = true;
+            animateDice(0);
+        }
 
+        void animateDice(int frame) {
+            if (frame < 10) {
+                displayDice = random.nextInt(6) + 1;
+                invalidate();
+                postDelayed(() -> animateDice(frame + 1), 100);
+                return;
+            }
+
+            rollingAnimation = false;
+            displayDice = dice;
+            finishDiceRoll();
+            invalidate();
+        }
+
+        void finishDiceRoll() {
             if (!hasMove(turn)) {
                 Toast.makeText(MainActivity.this,
-                    dice == 6 ? "6! Dobara roll karo" :
-                    "Koi valid move nahi",
+                    dice == 6 ? "6! Dobara roll karo" : "Koi valid move nahi",
                     Toast.LENGTH_SHORT).show();
 
                 if (dice != 6) {
                     nextTurn();
                 } else {
-                    dice = 0;
+                    // A six with no legal move still earns another roll.
                     rolled = false;
                 }
             } else if (legalMoveCount(turn) == 1) {
-                // Automatically move when exactly one token is legal.
                 for (int b = 0; b < 4; b++) {
                     if (canMove(turn, b)) {
                         moveToken(b);
@@ -540,8 +589,6 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-
-            invalidate();
         }
 
         void moveToken(int token) {
@@ -633,7 +680,7 @@ public class MainActivity extends Activity {
                 return true;
             }
 
-            if (rolled) {
+            if (rolled && !rollingAnimation) {
                 for (int b = 0; b < 4; b++) {
                     float[] xy = tokenPosition(turn, b);
 
