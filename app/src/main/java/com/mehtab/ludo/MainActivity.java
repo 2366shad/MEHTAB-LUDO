@@ -26,9 +26,14 @@ public class MainActivity extends Activity {
         Paint p = new Paint(3);
         Random random = new Random();
 
+        // Board/player indices: Red top-left, Green top-right,
+        // Yellow bottom-left, Blue bottom-right.
         int[] colors = {
             Color.RED, Color.GREEN, Color.YELLOW, Color.BLUE
         };
+
+        // Turn order requested: Green -> Blue -> Red -> Yellow.
+        int[] turnOrder = {1, 3, 0, 2};
 
         // -1 = yard, 0-51 = track, 52-56 = home lane, 57 = finished
         int[][] pos = new int[4][4];
@@ -112,59 +117,75 @@ public class MainActivity extends Activity {
             drawHome(c);
             drawTokens(c);
 
-            // Central dice panel: keeps the four home bases unobstructed.
-            p.setColor(Color.BLACK);
-            p.setTextAlign(Paint.Align.CENTER);
-            p.setTextSize(cell * .34f);
-            c.drawText("MEHTAB LUDO",
-                    cell * 7.5f, cell * 6.38f, p);
-
-            p.setColor(colors[turn]);
-            p.setTextSize(cell * .30f);
-            c.drawText("PLAYER " + (turn + 1),
-                    cell * 7.5f, cell * 8.62f, p);
-
-            p.setColor(Color.rgb(25, 30, 42));
-            p.setStyle(Paint.Style.FILL);
-            c.drawRoundRect(
-                new RectF(cell * 6.55f, cell * 6.55f,
-                          cell * 8.45f, cell * 8.45f),
-                cell * .28f, cell * .28f, p
-            );
-
-            p.setColor(Color.WHITE);
-            p.setStyle(Paint.Style.FILL);
-            if (dice == 0) {
-                p.setTextSize(cell * .32f);
-                c.drawText("ROLL", cell * 7.5f, cell * 7.58f, p);
-            } else {
-                drawDiceFace(c, dice);
-            }
-
-            p.setTextSize(cell * .25f);
-            p.setColor(Color.DKGRAY);
-            c.drawText("Tap dice, then your token",
-                    cell * 7.5f, cell * 9.18f, p);
+            // Four player dice sit beside their matching board quadrants.
+            // Only the current player's dice is highlighted and tappable.
+            drawPlayerDice(c);
 
             p.setTextAlign(Paint.Align.LEFT);
             c.restore();
         }
 
-        void drawDiceFace(Canvas c, int value) {
-            float cx = 7.5f * cell;
-            float cy = 7.5f * cell;
-            float d = cell * .34f;
-            float r = cell * .095f;
+        float diceX(int player) {
+            if (player == 0 || player == 2) return 6.78f * cell;
+            return 8.22f * cell;
+        }
+
+        float diceY(int player) {
+            if (player == 0 || player == 1) return 6.78f * cell;
+            return 8.22f * cell;
+        }
+
+        void drawPlayerDice(Canvas c) {
+            for (int player = 0; player < 4; player++) {
+                float cx = diceX(player);
+                float cy = diceY(player);
+                float half = cell * .66f;
+                boolean active = player == turn;
+
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(active ? colors[player] : Color.rgb(205,205,205));
+                c.drawRoundRect(new RectF(cx-half, cy-half, cx+half, cy+half),
+                        cell * .18f, cell * .18f, p);
+
+                p.setColor(Color.WHITE);
+                c.drawRoundRect(new RectF(cx-half*.78f, cy-half*.78f,
+                        cx+half*.78f, cy+half*.78f),
+                        cell * .13f, cell * .13f, p);
+
+                if (active && rolled) {
+                    drawDiceFace(c, dice, cx, cy);
+                } else {
+                    p.setColor(active ? colors[player] : Color.GRAY);
+                    p.setTextAlign(Paint.Align.CENTER);
+                    p.setTextSize(cell * .22f);
+                    c.drawText("ROLL", cx, cy + cell * .075f, p);
+                }
+
+                if (active) {
+                    p.setColor(Color.BLACK);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(cell * .045f);
+                    c.drawRoundRect(new RectF(cx-half, cy-half, cx+half, cy+half),
+                            cell * .18f, cell * .18f, p);
+                    p.setStyle(Paint.Style.FILL);
+                }
+            }
+        }
+
+        void drawDiceFace(Canvas c, int value, float cx, float cy) {
+            float d = cell * .22f;
+            float r = cell * .075f;
             int[][][] dots = {
                 {},
                 {{0,0}},
-                {{-1, -1},{1, 1}},
-                {{-1, -1},{0,0},{1,1}},
+                {{-1,-1},{1,1}},
+                {{-1,-1},{0,0},{1,1}},
                 {{-1,-1},{1,-1},{-1,1},{1,1}},
                 {{-1,-1},{1,-1},{0,0},{-1,1},{1,1}},
                 {{-1,-1},{1,-1},{-1,0},{1,0},{-1,1},{1,1}}
             };
-            p.setColor(Color.WHITE);
+            p.setColor(Color.BLACK);
+            p.setStyle(Paint.Style.FILL);
             for (int[] dot : dots[value]) {
                 c.drawCircle(cx + dot[0] * d, cy + dot[1] * d, r, p);
             }
@@ -382,7 +403,14 @@ public class MainActivity extends Activity {
         }
 
         void nextTurn() {
-            turn = (turn + 1) % 4;
+            int orderIndex = 0;
+            for (int i = 0; i < turnOrder.length; i++) {
+                if (turnOrder[i] == turn) {
+                    orderIndex = i;
+                    break;
+                }
+            }
+            turn = turnOrder[(orderIndex + 1) % turnOrder.length];
             dice = 0;
             rolled = false;
         }
@@ -482,10 +510,12 @@ public class MainActivity extends Activity {
             float x = e.getX() - left;
             float y = e.getY() - top;
 
-            if (x > cell * 6.45f && x < cell * 8.55f &&
-                y > cell * 6.45f && y < cell * 8.55f) {
-
+            float activeDiceX = diceX(turn);
+            float activeDiceY = diceY(turn);
+            if (Math.abs(x - activeDiceX) < cell * .72f &&
+                Math.abs(y - activeDiceY) < cell * .72f) {
                 rollDice();
+                invalidate();
                 return true;
             }
 
