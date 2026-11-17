@@ -4,6 +4,7 @@ package com.mehtab.ludo;
 import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
+import android.view.Gravity;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Color;
@@ -11,14 +12,83 @@ import android.graphics.RectF;
 import android.graphics.Path;
 import android.view.MotionEvent;
 import android.widget.Toast;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.LinearLayout;
 import java.util.Random;
 
 public class MainActivity extends Activity {
 
+    private LudoBoard board;
+    private TextView statusText;
+    private Button rollButton;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(new LudoBoard());
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.rgb(245, 247, 250));
+
+        board = new LudoBoard();
+        LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
+        boardParams.gravity = Gravity.CENTER;
+        root.addView(board, boardParams);
+
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.VERTICAL);
+        controls.setGravity(Gravity.CENTER);
+        controls.setPadding(16, 8, 16, 16);
+
+        statusText = new TextView(this);
+        statusText.setTextColor(Color.rgb(35, 45, 60));
+        statusText.setTextSize(16);
+        statusText.setGravity(Gravity.CENTER);
+        statusText.setPadding(8, 4, 8, 10);
+        controls.addView(statusText, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        rollButton = new Button(this);
+        rollButton.setText("ROLL DICE");
+        rollButton.setTextSize(17);
+        rollButton.setAllCaps(false);
+        rollButton.setOnClickListener(v -> {
+            board.rollDice();
+            board.invalidate();
+            updateStatus();
+        });
+        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        buttonParams.setMargins(24, 0, 24, 0);
+        controls.addView(rollButton, buttonParams);
+
+        root.addView(controls, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        setContentView(root);
+        updateStatus();
+    }
+
+    private void updateStatus() {
+        if (board == null || statusText == null || rollButton == null) return;
+        String[] names = {"RED", "GREEN", "YELLOW", "BLUE"};
+        if (board.gameOver) {
+            statusText.setText(names[board.winner] + " PLAYER WINS!");
+        } else if (board.rollingAnimation) {
+            statusText.setText(names[board.turn] + " PLAYER — ROLLING...");
+        } else if (board.rolled) {
+            statusText.setText(names[board.turn] + " PLAYER — SELECT A TOKEN ("
+                    + board.dice + ")");
+        } else {
+            statusText.setText(names[board.turn] + " PLAYER'S TURN");
+        }
+        rollButton.setEnabled(!board.gameOver && !board.rolled
+                && !board.rollingAnimation);
     }
 
     class LudoBoard extends View {
@@ -48,7 +118,7 @@ public class MainActivity extends Activity {
 
         float cell, left, top;
 
-        int[] start = {0, 13, 26, 39};
+        int[] start = {0, 13, 39, 26};
 
         int[] safeSquares = {
             0, 8, 13, 21, 26, 34, 39, 47
@@ -69,8 +139,8 @@ public class MainActivity extends Activity {
         int[][][] homeLane = {
             {{7,1},{7,2},{7,3},{7,4},{7,5}},
             {{1,7},{2,7},{3,7},{4,7},{5,7}},
-            {{7,13},{7,12},{7,11},{7,10},{7,9}},
-            {{13,7},{12,7},{11,7},{10,7},{9,7}}
+            {{13,7},{12,7},{11,7},{10,7},{9,7}},
+            {{7,13},{7,12},{7,11},{7,10},{7,9}}
         };
 
         public LudoBoard() {
@@ -101,7 +171,7 @@ public class MainActivity extends Activity {
         protected void onDraw(Canvas c) {
             super.onDraw(c);
 
-            float size = Math.min(getWidth(), getHeight());
+            float size = Math.min(getWidth(), getHeight()) * 0.98f;
             cell = size / 15f;
 
             left = (getWidth() - size) / 2f;
@@ -121,10 +191,6 @@ public class MainActivity extends Activity {
             drawHome(c);
             drawTokens(c);
             drawCenterCrown(c);
-
-            // Four player dice sit beside their matching board quadrants.
-            // Only the current player's dice is highlighted and tappable.
-            drawPlayerDice(c);
             if (gameOver) drawWinnerOverlay(c, size);
 
             p.setTextAlign(Paint.Align.LEFT);
@@ -384,6 +450,7 @@ public class MainActivity extends Activity {
             gameOver = false;
             winner = -1;
             invalidate();
+            updateStatus();
         }
 
         void drawTokens(Canvas c) {
@@ -552,6 +619,7 @@ public class MainActivity extends Activity {
             displayDice = random.nextInt(6) + 1;
             rolled = true;
             rollingAnimation = true;
+            updateStatus();
             animateDice(0);
         }
 
@@ -567,6 +635,7 @@ public class MainActivity extends Activity {
             displayDice = dice;
             finishDiceRoll();
             invalidate();
+            updateStatus();
         }
 
         void finishDiceRoll() {
@@ -642,6 +711,7 @@ public class MainActivity extends Activity {
                     Toast.LENGTH_LONG).show();
 
                 invalidate();
+                updateStatus();
                 return;
             }
 
@@ -655,6 +725,7 @@ public class MainActivity extends Activity {
             }
 
             invalidate();
+            updateStatus();
         }
 
         @Override
@@ -670,15 +741,6 @@ public class MainActivity extends Activity {
 
             float x = e.getX() - left;
             float y = e.getY() - top;
-
-            float activeDiceX = diceX(turn);
-            float activeDiceY = diceY(turn);
-            if (Math.abs(x - activeDiceX) < cell * .72f &&
-                Math.abs(y - activeDiceY) < cell * .72f) {
-                rollDice();
-                invalidate();
-                return true;
-            }
 
             if (rolled && !rollingAnimation) {
                 for (int b = 0; b < 4; b++) {
