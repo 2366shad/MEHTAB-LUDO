@@ -112,35 +112,62 @@ public class MainActivity extends Activity {
             drawHome(c);
             drawTokens(c);
 
+            // Central dice panel: keeps the four home bases unobstructed.
             p.setColor(Color.BLACK);
-            p.setTextSize(cell * .58f);
             p.setTextAlign(Paint.Align.CENTER);
+            p.setTextSize(cell * .34f);
             c.drawText("MEHTAB LUDO",
-                    cell * 7.5f, cell * 7.15f, p);
+                    cell * 7.5f, cell * 6.38f, p);
 
             p.setColor(colors[turn]);
-            p.setTextSize(cell * .43f);
+            p.setTextSize(cell * .30f);
             c.drawText("PLAYER " + (turn + 1),
-                    cell * 7.5f, cell * 8.0f, p);
+                    cell * 7.5f, cell * 8.62f, p);
 
-            p.setColor(Color.BLACK);
+            p.setColor(Color.rgb(25, 30, 42));
+            p.setStyle(Paint.Style.FILL);
             c.drawRoundRect(
-                new RectF(cell * 5.3f, cell * 9.0f,
-                          cell * 9.7f, cell * 11.0f),
-                cell * .3f, cell * .3f, p
+                new RectF(cell * 6.55f, cell * 6.55f,
+                          cell * 8.45f, cell * 8.45f),
+                cell * .28f, cell * .28f, p
             );
 
             p.setColor(Color.WHITE);
-            p.setTextSize(cell * .85f);
-            String d = dice == 0 ? "ROLL" : String.valueOf(dice);
-            c.drawText(d, cell * 7.5f, cell * 10.25f, p);
+            p.setStyle(Paint.Style.FILL);
+            if (dice == 0) {
+                p.setTextSize(cell * .32f);
+                c.drawText("ROLL", cell * 7.5f, cell * 7.58f, p);
+            } else {
+                drawDiceFace(c, dice);
+            }
 
-            p.setTextSize(cell * .32f);
-            c.drawText("Tap dice, then tap your token",
-                    cell * 7.5f, cell * 12.0f, p);
+            p.setTextSize(cell * .25f);
+            p.setColor(Color.DKGRAY);
+            c.drawText("Tap dice, then your token",
+                    cell * 7.5f, cell * 9.18f, p);
 
             p.setTextAlign(Paint.Align.LEFT);
             c.restore();
+        }
+
+        void drawDiceFace(Canvas c, int value) {
+            float cx = 7.5f * cell;
+            float cy = 7.5f * cell;
+            float d = cell * .34f;
+            float r = cell * .095f;
+            float[][] dots = {
+                {},
+                {{0,0}},
+                {{-1, -1},{1, 1}},
+                {{-1, -1},{0,0},{1,1}},
+                {{-1,-1},{1,-1},{-1,1},{1,1}},
+                {{-1,-1},{1,-1},{0,0},{-1,1},{1,1}},
+                {{-1,-1},{1,-1},{-1,0},{1,0},{-1,1},{1,1}}
+            };
+            p.setColor(Color.WHITE);
+            for (float[] dot : dots[value]) {
+                c.drawCircle(cx + dot[0] * d, cy + dot[1] * d, r, p);
+            }
         }
 
         void drawBase(Canvas c, int x, int y, int color) {
@@ -455,8 +482,8 @@ public class MainActivity extends Activity {
             float x = e.getX() - left;
             float y = e.getY() - top;
 
-            if (x > cell * 5 && x < cell * 10 &&
-                y > cell * 9 && y < cell * 11) {
+            if (x > cell * 6.45f && x < cell * 8.55f &&
+                y > cell * 6.45f && y < cell * 8.55f) {
 
                 rollDice();
                 return true;
