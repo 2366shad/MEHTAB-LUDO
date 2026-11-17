@@ -242,14 +242,29 @@ public class MainActivity extends Activity {
                 p.setStyle(Paint.Style.FILL);
 
                 if (isSafe(i)) {
-                    p.setColor(Color.DKGRAY);
-                    p.setTextSize(cell * .45f);
-                    p.setTextAlign(Paint.Align.CENTER);
-                    c.drawText("*",
-                        (col + .5f) * cell,
-                        (r + .75f) * cell, p);
+                    drawStar(c, (col + .5f) * cell, (r + .5f) * cell, cell * .30f);
                 }
             }
+        }
+
+        void drawStar(Canvas c, float cx, float cy, float radius) {
+            Path star = new Path();
+            for (int i = 0; i < 10; i++) {
+                double angle = -Math.PI / 2 + i * Math.PI / 5;
+                float r = (i % 2 == 0) ? radius : radius * .43f;
+                float x = cx + (float)Math.cos(angle) * r;
+                float y = cy + (float)Math.sin(angle) * r;
+                if (i == 0) star.moveTo(x, y); else star.lineTo(x, y);
+            }
+            star.close();
+            p.setColor(Color.rgb(255, 190, 35));
+            p.setStyle(Paint.Style.FILL);
+            c.drawPath(star, p);
+            p.setColor(Color.rgb(120, 75, 10));
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(cell * .025f);
+            c.drawPath(star, p);
+            p.setStyle(Paint.Style.FILL);
         }
 
         void drawHome(Canvas c) {
@@ -313,23 +328,68 @@ public class MainActivity extends Activity {
             for (int a = 0; a < 4; a++) {
                 for (int b = 0; b < 4; b++) {
                     float[] xy = tokenPosition(a, b);
-
-                    circle(c, Color.BLACK,
-                        xy[0], xy[1], cell * .34f);
-
-                    circle(c, colors[a],
-                        xy[0], xy[1], cell * .29f);
-
-                    p.setColor(Color.WHITE);
-                    p.setTextSize(cell * .25f);
-                    p.setTextAlign(Paint.Align.CENTER);
-
-                    c.drawText(String.valueOf(b + 1),
-                        xy[0], xy[1] + cell * .09f, p);
+                    boolean movable = rolled && a == turn && canMove(a, b);
+                    drawPawn(c, colors[a], xy[0], xy[1], movable);
                 }
             }
+        }
 
-            p.setTextAlign(Paint.Align.LEFT);
+        void drawPawn(Canvas c, int color, float x, float y, boolean highlighted) {
+            float s = cell;
+            if (highlighted) {
+                p.setColor(Color.argb(75, 255, 215, 0));
+                c.drawCircle(x, y, s * .49f, p);
+                p.setColor(Color.rgb(255, 190, 0));
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(s * .055f);
+                c.drawCircle(x, y, s * .43f, p);
+                p.setStyle(Paint.Style.FILL);
+            }
+
+            // Soft shadow and broad pawn foot
+            p.setColor(Color.argb(85, 0, 0, 0));
+            c.drawOval(new RectF(x - s*.34f, y + s*.20f, x + s*.34f, y + s*.39f), p);
+
+            p.setColor(darken(color));
+            c.drawOval(new RectF(x - s*.34f, y + s*.10f, x + s*.34f, y + s*.34f), p);
+
+            // Pawn body with a rounded shoulder and narrow neck
+            Path body = new Path();
+            body.moveTo(x - s*.25f, y + s*.18f);
+            body.cubicTo(x - s*.24f, y - s*.02f, x - s*.12f, y - s*.07f, x - s*.12f, y - s*.19f);
+            body.cubicTo(x - s*.12f, y - s*.28f, x - s*.22f, y - s*.30f, x - s*.22f, y - s*.39f);
+            body.cubicTo(x - s*.22f, y - s*.56f, x + s*.22f, y - s*.56f, x + s*.22f, y - s*.39f);
+            body.cubicTo(x + s*.22f, y - s*.30f, x + s*.12f, y - s*.28f, x + s*.12f, y - s*.19f);
+            body.cubicTo(x + s*.12f, y - s*.07f, x + s*.24f, y - s*.02f, x + s*.25f, y + s*.18f);
+            body.close();
+            p.setColor(color);
+            c.drawPath(body, p);
+
+            // Gloss highlight and round head
+            p.setColor(lighten(color));
+            c.drawCircle(x - s*.075f, y - s*.40f, s*.105f, p);
+            p.setColor(color);
+            c.drawCircle(x, y - s*.43f, s*.19f, p);
+            p.setColor(lighten(color));
+            c.drawCircle(x - s*.055f, y - s*.49f, s*.065f, p);
+
+            p.setColor(Color.argb(150, 255, 255, 255));
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(s*.025f);
+            c.drawPath(body, p);
+            c.drawCircle(x, y - s*.43f, s*.19f, p);
+            p.setStyle(Paint.Style.FILL);
+        }
+
+        int darken(int color) {
+            return Color.rgb((int)(Color.red(color)*.62f),
+                    (int)(Color.green(color)*.62f), (int)(Color.blue(color)*.62f));
+        }
+
+        int lighten(int color) {
+            return Color.rgb(Math.min(255, Color.red(color)+65),
+                    Math.min(255, Color.green(color)+65),
+                    Math.min(255, Color.blue(color)+65));
         }
 
         float[] tokenPosition(int player, int token) {
