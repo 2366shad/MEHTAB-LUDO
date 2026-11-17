@@ -30,23 +30,25 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(245, 247, 250));
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
 
         board = new LudoBoard();
         LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
         boardParams.gravity = Gravity.CENTER;
+        boardParams.setMargins(dp(6), dp(4), dp(6), dp(2));
         root.addView(board, boardParams);
 
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.VERTICAL);
         controls.setGravity(Gravity.CENTER);
-        controls.setPadding(16, 8, 16, 16);
+        controls.setPadding(dp(12), dp(5), dp(12), dp(15));
 
         statusText = new TextView(this);
         statusText.setTextColor(Color.rgb(35, 45, 60));
         statusText.setTextSize(16);
         statusText.setGravity(Gravity.CENTER);
-        statusText.setPadding(8, 4, 8, 10);
+        statusText.setPadding(dp(8), dp(2), dp(8), dp(6));
         controls.addView(statusText, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -60,10 +62,11 @@ public class MainActivity extends Activity {
             board.invalidate();
             updateStatus();
         });
+        int buttonWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.80f);
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        buttonParams.setMargins(24, 0, 24, 0);
+                buttonWidth, LinearLayout.LayoutParams.WRAP_CONTENT);
+        buttonParams.gravity = Gravity.CENTER_HORIZONTAL;
+        buttonParams.setMargins(0, 0, 0, dp(2));
         controls.addView(rollButton, buttonParams);
 
         root.addView(controls, new LinearLayout.LayoutParams(
@@ -72,6 +75,10 @@ public class MainActivity extends Activity {
 
         setContentView(root);
         updateStatus();
+    }
+
+    private int dp(float value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private void updateStatus() {
@@ -121,7 +128,7 @@ public class MainActivity extends Activity {
         int[] start = {0, 13, 39, 26};
 
         int[] safeSquares = {
-            0, 8, 13, 21, 26, 34, 39, 47
+            0, 8, 14, 21, 26, 34, 39, 47
         };
 
         int[][] path = {
@@ -171,7 +178,7 @@ public class MainActivity extends Activity {
         protected void onDraw(Canvas c) {
             super.onDraw(c);
 
-            float size = Math.min(getWidth(), getHeight()) * 0.98f;
+            float size = Math.min(getWidth(), getHeight()) * 0.94f;
             cell = size / 15f;
 
             left = (getWidth() - size) / 2f;
