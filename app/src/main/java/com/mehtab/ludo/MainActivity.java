@@ -38,9 +38,11 @@ public class MainActivity extends Activity {
         // -1 = yard, 0-51 = track, 52-56 = home lane, 57 = finished
         int[][] pos = new int[4][4];
 
-        int turn = 0;
+        int turn = turnOrder[0]; // Green starts
         int dice = 0;
         boolean rolled = false;
+        boolean gameOver = false;
+        int winner = -1;
 
         float cell, left, top;
 
@@ -120,6 +122,7 @@ public class MainActivity extends Activity {
             // Four player dice sit beside their matching board quadrants.
             // Only the current player's dice is highlighted and tappable.
             drawPlayerDice(c);
+            if (gameOver) drawWinnerOverlay(c, size);
 
             p.setTextAlign(Paint.Align.LEFT);
             c.restore();
@@ -324,6 +327,35 @@ public class MainActivity extends Activity {
             c.drawPath(triangle, p);
         }
 
+        void drawWinnerOverlay(Canvas c, float size) {
+            p.setColor(Color.argb(205, 255, 255, 255));
+            c.drawRoundRect(new RectF(cell * 2.0f, cell * 6.25f,
+                    cell * 13.0f, cell * 8.75f), cell * .35f, cell * .35f, p);
+            p.setColor(colors[winner]);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTextSize(cell * .72f);
+            p.setFakeBoldText(true);
+            c.drawText("PLAYER " + (winner + 1) + " WINS!", size / 2f,
+                    cell * 7.25f, p);
+            p.setTextSize(cell * .34f);
+            p.setColor(Color.DKGRAY);
+            c.drawText("TAP TO PLAY AGAIN", size / 2f,
+                    cell * 8.05f, p);
+            p.setFakeBoldText(false);
+        }
+
+        void resetGame() {
+            for (int a = 0; a < 4; a++) {
+                for (int b = 0; b < 4; b++) pos[a][b] = -1;
+            }
+            turn = turnOrder[0];
+            dice = 0;
+            rolled = false;
+            gameOver = false;
+            winner = -1;
+            invalidate();
+        }
+
         void drawTokens(Canvas c) {
             for (int a = 0; a < 4; a++) {
                 for (int b = 0; b < 4; b++) {
@@ -462,6 +494,12 @@ public class MainActivity extends Activity {
             return false;
         }
 
+        int legalMoveCount(int player) {
+            int count = 0;
+            for (int b = 0; b < 4; b++) if (canMove(player, b)) count++;
+            return count;
+        }
+
         void nextTurn() {
             int orderIndex = 0;
             for (int i = 0; i < turnOrder.length; i++) {
@@ -476,7 +514,7 @@ public class MainActivity extends Activity {
         }
 
         void rollDice() {
-            if (rolled) return;
+            if (gameOver || rolled) return;
 
             dice = random.nextInt(6) + 1;
             rolled = true;
@@ -493,12 +531,21 @@ public class MainActivity extends Activity {
                     dice = 0;
                     rolled = false;
                 }
+            } else if (legalMoveCount(turn) == 1) {
+                // Automatically move when exactly one token is legal.
+                for (int b = 0; b < 4; b++) {
+                    if (canMove(turn, b)) {
+                        moveToken(b);
+                        return;
+                    }
+                }
             }
 
             invalidate();
         }
 
         void moveToken(int token) {
+            if (gameOver) return;
             if (!canMove(turn, token)) return;
 
             if (pos[turn][token] == -1) {
@@ -541,8 +588,10 @@ public class MainActivity extends Activity {
             }
 
             if (won) {
+                gameOver = true;
+                winner = turn;
                 Toast.makeText(MainActivity.this,
-                    "PLAYER " + (turn + 1) + " WINNER!",
+                    "PLAYER " + (turn + 1) + " WINNER! Tap board to restart.",
                     Toast.LENGTH_LONG).show();
 
                 invalidate();
@@ -564,6 +613,11 @@ public class MainActivity extends Activity {
         @Override
         public boolean onTouchEvent(MotionEvent e) {
             if (e.getAction() != MotionEvent.ACTION_DOWN) {
+                return true;
+            }
+
+            if (gameOver) {
+                resetGame();
                 return true;
             }
 
